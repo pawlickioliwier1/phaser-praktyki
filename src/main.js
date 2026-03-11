@@ -1,6 +1,8 @@
 import Phaser from "phaser"; // Importujemy główną bibliotekę Phaser
 import { clampPlayerPosition } from "./playerBounds";
 import { getAngleToPointer } from "./aiming";
+import { getBulletVelocity } from "./bulletPhysics";
+import { canShoot } from "./shooting"; // funkcja sprawdzająca cooldown strzału
 
 // =======================
 // Zmienne globalne
@@ -8,6 +10,10 @@ import { getAngleToPointer } from "./aiming";
 
 let player; // Obiekt reprezentujący gracza (prostokąt)
 let keys;   // Obiekt przechowujący stan klawiszy WASD
+let bullets = []; // tablica przechowująca pociski
+
+const SHOOT_COOLDOWN = 300; // czas między strzałami (ms)
+let lastShotTime = 0; // czas ostatniego strzału
 
 // =======================
 // Konfiguracja gry
@@ -32,8 +38,6 @@ new Phaser.Game(config);
 // =======================
 
 function create() {
-  // Funkcja wywoływana raz – na początku gry (inicjalizacja)
-
   // Tworzymy zielony prostokąt – to będzie nasz gracz
   player = this.add.rectangle(400, 300, 50, 50, 0x00ff00);
 
@@ -44,6 +48,42 @@ function create() {
     S: Phaser.Input.Keyboard.KeyCodes.S,
     D: Phaser.Input.Keyboard.KeyCodes.D
   });
+
+  // =======================
+  // Strzelanie myszą
+  // =======================
+
+  this.input.on("pointerdown", (pointer) => {
+
+    const now = this.time.now; // aktualny czas w grze
+
+    // sprawdzamy czy cooldown już minął
+    if (!canShoot(lastShotTime, now, SHOOT_COOLDOWN)) {
+      return; // jeśli nie minął, nie strzelamy
+    }
+
+    lastShotTime = now; // zapisujemy czas strzału
+
+    const speed = 10; // prędkość pocisku
+
+    // liczymy prędkość pocisku w stronę kursora
+    const v = getBulletVelocity(
+      player.x,
+      player.y,
+      pointer.worldX,
+      pointer.worldY,
+      speed
+    );
+
+    // tworzymy pocisk
+    const bullet = this.add.circle(player.x, player.y, 5, 0xffff00);
+
+    // zapisujemy prędkość pocisku
+    bullet.vx = v.vx;
+    bullet.vy = v.vy;
+
+    bullets.push(bullet); // dodajemy pocisk do listy
+  });
 }
 
 // =======================
@@ -51,7 +91,7 @@ function create() {
 // =======================
 
 function update() {
-  const speed = 4; // Prędkość poruszania się gracza
+  const speed = 4;
 
   let newX = player.x;
   let newY = player.y;
@@ -62,10 +102,9 @@ function update() {
   if (keys.A.isDown) newX -= speed;
   if (keys.D.isDown) newX += speed;
 
-  // Ograniczamy nowe położenie do granic ekranu (800×600)
+  // Ograniczamy nowe położenie do granic ekranu
   const pos = clampPlayerPosition(newX, newY, 800, 600);
 
-  // Przypisujemy poprawione (bezpieczne) współrzędne do gracza
   player.x = pos.x;
   player.y = pos.y;
 
@@ -83,4 +122,13 @@ function update() {
   );
 
   player.rotation = angle;
+
+  // =======================
+  // Ruch pocisków
+  // =======================
+
+  for (const bullet of bullets) {
+    bullet.x += bullet.vx;
+    bullet.y += bullet.vy;
+  }
 }
