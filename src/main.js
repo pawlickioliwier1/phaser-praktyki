@@ -19,6 +19,8 @@ import { getRandomSpawn } from "./spawn";
 import { increaseScore } from "./score";
 // importujemy funkcję increaseScore z pliku score.js
 
+import { takeDamage, isAlive } from "./playerHealth";
+// importujemy funkcje do obsługi zdrowia gracza (obrażenia i sprawdzanie czy żyje)
 
 // =======================
 // Zmienne globalne
@@ -45,6 +47,14 @@ let lastShotTime = 0;
 let score = 0;
 // zmienna do przechowywania punktów gracza
 
+let health = 3;
+// aktualne zdrowie gracza
+
+let lastHitTime = 0;
+// zapamiętujemy kiedy było ostatnie obrażenie od enemy
+
+const HIT_COOLDOWN = 800;
+// czas w milisekundach między kolejnymi obrażeniami (0.8 sekundy)
 
 // =======================
 // Konfiguracja gry
@@ -225,6 +235,39 @@ function update() {
     const targetRect = target.getBounds();
     if (Phaser.Geom.Intersects.RectangleToRectangle(bulletRect, targetRect)) {
       handleBulletHitTarget(bullet, target);
+    }
+  }
+
+  // =======================
+  // Kolizja GRACZ vs ENEMY (target)
+  // =======================
+
+  const playerRect = player.getBounds();
+  // pobieramy prostokąt granic gracza
+
+  const targetRect = target.getBounds();
+  // pobieramy prostokąt granic targeta (enemy)
+
+  if (Phaser.Geom.Intersects.RectangleToRectangle(playerRect, targetRect)) {
+    // jeśli gracz dotknął enemy
+
+    const now = this.time.now;
+    // aktualny czas w grze (Phaser liczy czas w ms)
+
+    if (now - lastHitTime >= HIT_COOLDOWN) {
+      // sprawdzamy cooldown żeby nie tracić życia co klatkę
+
+      lastHitTime = now;
+      // zapisujemy moment ostatniego obrażenia
+
+      health = takeDamage(health, 1);
+      // używamy funkcji z playerHealth.js
+
+      console.log(`Trafienie! Zdrowie: ${health}`);
+
+      if (!isAlive(health)) {
+        console.log("GAME OVER");
+      }
     }
   }
 }
