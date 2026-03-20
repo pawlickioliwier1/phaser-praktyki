@@ -1,11 +1,25 @@
 // playerHealth.js – funkcje do obsługi życia gracza
 
-// Odejmuje obrażenia od aktualnego zdrowia
 export function takeDamage(health, damage) {
-  return health - damage;
+  if (typeof health !== "number" || typeof damage !== "number") {
+    throw new Error("health and damage must be numbers")
+  }
+
+  if (health < 0) {
+    throw new Error("health cannot be negative")
+  }
+
+  if (damage < 0) {
+    throw new Error("damage cannot be negative")
+  }
+
+  return Math.max(0, health - damage)
 }
 
-// Zwraca true, jeśli gracz ma jeszcze życie (> 0)
 export function isAlive(health) {
-  return health > 0;
+  if (typeof health !== "number") {
+    throw new Error("health must be a number")
+  }
+
+  return health > 0
 }

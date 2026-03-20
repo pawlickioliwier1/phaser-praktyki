@@ -10,18 +10,17 @@ import { getRandomSpawn } from "./spawn"
 
 
 describe("getRandomSpawn", () => {
-// tworzymy grupę testów dla funkcji getRandomSpawn
+  // tworzymy grupę testów dla funkcji getRandomSpawn
 
 
   it("pozycja jest w granicach mapy", () => {
-  // test sprawdza czy wylosowana pozycja znajduje się w granicach mapy
+    // test sprawdza czy wylosowana pozycja znajduje się w granicach mapy
 
-    const p = getRandomSpawn(800,600)
+    const p = getRandomSpawn(800, 600)
     // wywołujemy funkcję
     // 800 → szerokość mapy
     // 600 → wysokość mapy
     // wynik zapisujemy w zmiennej p (pozycja spawn)
-
 
     expect(p.x).toBeGreaterThanOrEqual(0)
     // sprawdzamy czy X nie jest mniejsze niż 0
@@ -36,7 +35,21 @@ describe("getRandomSpawn", () => {
 
     expect(p.y).toBeLessThanOrEqual(600)
     // sprawdzamy czy Y nie przekracza wysokości mapy
+  })
 
+
+  // ────────────────────────────────────────────────
+  // Testy walidacji / błędów
+  // ────────────────────────────────────────────────
+
+  it("rzuca błąd dla width <= 0", () => {
+    expect(() => getRandomSpawn(0, 100)).toThrow()
+    // oczekujemy błędu, bo szerokość ≤ 0 jest niedozwolona
+  })
+
+  it("rzuca błąd dla stringów", () => {
+    expect(() => getRandomSpawn("100", 100)).toThrow()
+    // oczekujemy błędu, bo width jest stringiem zamiast liczbą
   })
 
 })

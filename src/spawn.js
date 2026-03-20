@@ -1,13 +1,16 @@
+// spawn.js – funkcje związane z losowaniem pozycji pojawiania się obiektów
+
 export function getRandomSpawn(width, height) {
-  // eksportujemy funkcję getRandomSpawn, żeby można było jej używać w innych plikach
-  // width i height to szerokość i wysokość mapy / ekranu
+  if (typeof width !== "number" || typeof height !== "number") {
+    throw new Error("width and height must be numbers")
+  }
+
+  if (width <= 0 || height <= 0) {
+    throw new Error("width and height must be > 0")
+  }
 
   const x = Math.random() * width
-  // losujemy pozycję X w zakresie szerokości mapy
-
   const y = Math.random() * height
-  // losujemy pozycję Y w zakresie wysokości mapy
 
   return { x, y }
-  // zwracamy obiekt z losową pozycją spawn: x i y
 }
