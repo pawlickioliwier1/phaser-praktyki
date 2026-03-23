@@ -22,6 +22,9 @@ import { increaseScore } from "./score";
 import { takeDamage, isAlive } from "./playerHealth";
 // importujemy funkcje do obsługi zdrowia gracza (obrażenia i sprawdzanie czy żyje)
 
+import { getEnemyStats, chooseEnemyType } from "./enemyTypes";
+// importujemy typy przeciwników i wybór typu
+
 // =======================
 // Zmienne globalne
 // =======================
@@ -87,9 +90,40 @@ new Phaser.Game(config);
 function spawnWave(numEnemies, scene) {
   for (let i = 0; i < numEnemies; i++) {
     const spawn = getRandomSpawn(800, 600);
-    const enemy = scene.add.rectangle(spawn.x, spawn.y, 40, 40, 0xff0000);
+    // losujemy spawn przeciwnika
+
+    const type = chooseEnemyType(currentWave);
+    // wybieramy typ przeciwnika na podstawie fali
+
+    const stats = getEnemyStats(type);
+    // pobieramy statystyki przeciwnika
+
+    let color = 0xff0000;
+    // domyślny kolor (normal)
+
+    if (type === "fast") color = 0x00ffff;
+    // szybki = niebieski
+
+    if (type === "tank") color = 0x888888;
+    // tank = szary
+
+    const enemy = scene.add.rectangle(spawn.x, spawn.y, 40, 40, color);
+    // tworzymy przeciwnika z odpowiednim kolorem
+
+    enemy.speed = stats.speed;
+    // przypisujemy prędkość
+
+    enemy.hp = stats.hp;
+    // przypisujemy hp
+
+    enemy.damage = stats.damage;
+    // przypisujemy obrażenia
+
     targets.push(enemy);
+    // dodajemy przeciwnika do tablicy
+
     isTouchingTargets.push(false);
+    // flaga kolizji dla tego przeciwnika
   }
 }
 
@@ -136,13 +170,12 @@ function create() {
 
     if (!canShoot(lastShotTime, now, SHOOT_COOLDOWN)) {
       // sprawdzamy czy minął cooldown
-      // jeśli NIE minął to funkcja zwróci false
       return;
       // kończymy funkcję i nie strzelamy
     }
 
     lastShotTime = now;
-    // zapisujemy moment strzału jako ostatni strzał
+    // zapisujemy moment strzału
 
     const speed = 10;
     // prędkość pocisku
@@ -150,22 +183,16 @@ function create() {
     const v = getBulletVelocity(
       player.x, player.y, pointer.worldX, pointer.worldY, speed
     );
-    // obliczamy prędkość pocisku w osi X i Y
+    // obliczamy prędkość pocisku
 
     const bullet = this.add.circle(player.x, player.y, 5, 0xffff00);
     // tworzymy pocisk
-    // zaczyna w miejscu gracza
-    // promień 5
-    // kolor żółty
 
     bullet.vx = v.vx;
-    // zapisujemy prędkość w osi X
-
     bullet.vy = v.vy;
-    // zapisujemy prędkość w osi Y
 
     bullets.push(bullet);
-    // dodajemy pocisk do tablicy pocisków
+    // dodajemy pocisk do tablicy
   });
 }
 
@@ -174,26 +201,26 @@ function create() {
 // Funkcja obsługująca trafienie pocisku w przeciwnika
 // =======================
 function handleBulletHitTarget(bullet, enemyIndex, scene) {
-  // funkcja usuwa pocisk, zwiększa punkty i losuje nowego przeciwnika
-
   bullet.destroy();
-  // usuwamy pocisk z gry
 
   const index = bullets.indexOf(bullet);
   if (index > -1) bullets.splice(index, 1);
-  // usuwamy pocisk z tablicy bullets
 
-  score = increaseScore(score);
-  // używamy funkcji increaseScore z pliku score.js
-  console.log("Punkty:", score);
-  // wyświetlamy wynik w konsoli
+  const enemy = targets[enemyIndex];
 
-  // usuwamy trafionego przeciwnika z tablicy
-  targets[enemyIndex].destroy();
-  targets.splice(enemyIndex, 1);
-  isTouchingTargets.splice(enemyIndex, 1); // usuń flagę dla tego przeciwnika
+  enemy.hp--;
+  // odejmujemy hp przeciwnikowi
 
-  // nowy przeciwnik zostanie dodany przy przejściu fali
+  if (enemy.hp <= 0) {
+    // jeśli przeciwnik nie żyje
+
+    score = increaseScore(score);
+    console.log("Punkty:", score);
+
+    enemy.destroy();
+    targets.splice(enemyIndex, 1);
+    isTouchingTargets.splice(enemyIndex, 1);
+  }
 }
 
 
@@ -203,33 +230,25 @@ function handleBulletHitTarget(bullet, enemyIndex, scene) {
 
 function update() {
   const speed = 4;
-  // prędkość ruchu gracza
 
   let newX = player.x;
   let newY = player.y;
-  // zapisujemy aktualną pozycję gracza
 
   if (keys.W.isDown) newY -= speed;
   if (keys.S.isDown) newY += speed;
   if (keys.A.isDown) newX -= speed;
   if (keys.D.isDown) newX += speed;
-  // obsługa ruchu klawiszami W A S D
 
   const pos = clampPlayerPosition(newX, newY, 800, 600);
-  // sprawdzamy czy gracz nie wychodzi poza ekran
 
   player.x = pos.x;
   player.y = pos.y;
-  // ustawiamy nową pozycję gracza
 
   const pointer = this.input.activePointer;
-  // pobieramy aktualną pozycję kursora myszy
 
   const angle = getAngleToPointer(player.x, player.y, pointer.worldX, pointer.worldY);
-  // obliczamy kąt gracza w stronę kursora
 
   player.rotation = angle;
-  // obracamy gracza w stronę kursora
 
   // =======================
   // Ruch pocisków i kolizja z przeciwnikami
@@ -238,16 +257,15 @@ function update() {
   for (const bullet of bullets) {
     bullet.x += bullet.vx;
     bullet.y += bullet.vy;
-    // przesuwamy pocisk ręcznie po ekranie
 
-    // sprawdzamy kolizję pocisku z każdym przeciwnikiem
     for (let enemyIndex = 0; enemyIndex < targets.length; enemyIndex++) {
       const enemy = targets[enemyIndex];
       const bulletRect = bullet.getBounds();
       const enemyRect = enemy.getBounds();
+
       if (Phaser.Geom.Intersects.RectangleToRectangle(bulletRect, enemyRect)) {
         handleBulletHitTarget(bullet, enemyIndex, this);
-        break; // kończymy pętlę po trafieniu jednego przeciwnika
+        break;
       }
     }
   }
@@ -257,33 +275,25 @@ function update() {
   // =======================
 
   const playerRect = player.getBounds();
-  // pobieramy prostokąt granic gracza
 
-  // sprawdzamy kolizję z każdym przeciwnikiem
   for (let enemyIndex = 0; enemyIndex < targets.length; enemyIndex++) {
     const enemy = targets[enemyIndex];
     const enemyRect = enemy.getBounds();
 
     const isCollidingNow = Phaser.Geom.Intersects.RectangleToRectangle(playerRect, enemyRect);
-    // sprawdzamy czy jest aktualnie kolizja z tym przeciwnikiem
 
     if (isCollidingNow && !isTouchingTargets[enemyIndex]) {
-      // jeśli jest kolizja z tym przeciwnikiem, a wcześniej nie było → zadajemy obrażenia
-
       isTouchingTargets[enemyIndex] = true;
-      // ustawiamy flagę dla tego przeciwnika
 
-      health = takeDamage(health, 1);
-      // używamy funkcji z playerHealth.js
+      health = takeDamage(health, enemy.damage);
+      // używamy damage przeciwnika
 
       console.log(`Trafienie! Zdrowie: ${health}`);
 
       if (!isAlive(health)) {
         console.log("GAME OVER");
       }
-      // break; // opcjonalnie, jeśli chcesz obrażenia tylko od jednego na raz
     } else if (!isCollidingNow) {
-      // jeśli nie ma kolizji z tym przeciwnikiem → resetujemy jego flagę
       isTouchingTargets[enemyIndex] = false;
     }
   }
@@ -294,6 +304,6 @@ function update() {
   if (targets.length === 0) {
     currentWave++;
     console.log("Fala", currentWave);
-    spawnWave(currentWave * 2, this); // np. 2x więcej przeciwników na falę
+    spawnWave(currentWave * 2, this);
   }
 }
