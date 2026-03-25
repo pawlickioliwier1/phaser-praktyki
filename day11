@@ -1,0 +1,20 @@
+# Day 14
+
+## Jaki bug dostałem
+Dostałem bug w funkcji movePlayer. Gdy ktoś przekazał undefined jako prędkość (speed), funkcja dodawała undefined do pozycji gracza. W wyniku tego player.x i player.y stawały się NaN
+
+## Co pokazał debugger
+Debugger pokazał, że w momencie wejścia do funkcji speed miało wartość undefined. Po wykonaniu linii player.x = player.x + speed obie wartości (x i y) zmieniły się na NaN
+
+## Jak pomogło mi AI
+AI pomogło mi znaleźć przyczynę błędu, wyjaśniło dlaczego pojawia się NaN
+
+## Jak naprawiłem błąd
+Dodałem proste sprawdzenie na początku funkcji
+
+## Jaki test dopisałem
+Test sprawdza, że funkcja nie psuje pozycji gracza przy błędnej wartości.
+
+## Czego się nauczyłem
+Że undefined + liczba = NaN i potrafi całkowicie zepsuć grę
+  
