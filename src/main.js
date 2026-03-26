@@ -9,6 +9,7 @@ import { increaseScore } from "./score";
 import { takeDamage, isAlive } from "./playerHealth";
 import { getEnemyStats, chooseEnemyType } from "./enemyTypes";
 import { MAX_AMMO, RELOAD_TIME, canShootWithAmmo, useAmmo, finishReload } from "./reload";
+import { createPauseOverlay, createGameOverOverlay, togglePause } from "./pause";
 
 // =======================
 // Zmienne globalne
@@ -30,6 +31,13 @@ let ammo = MAX_AMMO;
 let isReloading = false;
 let reloadStartTime = 0;
 let ammoText;
+let healthText;
+
+let isPaused = false;
+let isGameOver = false;
+let pauseText;
+let gameOverText;
+let restartHintText;
 
 // =======================
 // Konfiguracja gry
@@ -94,6 +102,19 @@ function handleBulletHit(bullet, enemyIndex, scene) {
 // =======================
 
 function create() {
+  // Reset stanu gry (potrzebne przy restarcie przez scene.scene.restart())
+  bullets = [];
+  enemies = [];
+  score = 0;
+  health = 3;
+  currentWave = 1;
+  ammo = MAX_AMMO;
+  isReloading = false;
+  reloadStartTime = 0;
+  lastShotTime = 0;
+  isPaused = false;
+  isGameOver = false;
+
   player = this.add.rectangle(400, 300, 50, 50, 0x00ff00);
 
   spawnWave(this);
@@ -103,7 +124,9 @@ function create() {
     A: Phaser.Input.Keyboard.KeyCodes.A,
     S: Phaser.Input.Keyboard.KeyCodes.S,
     D: Phaser.Input.Keyboard.KeyCodes.D,
-    R: Phaser.Input.Keyboard.KeyCodes.R
+    R: Phaser.Input.Keyboard.KeyCodes.R,
+    P: Phaser.Input.Keyboard.KeyCodes.P,
+    ENTER: Phaser.Input.Keyboard.KeyCodes.ENTER
   });
 
   ammoText = this.add.text(10, 10, `Ammo: ${ammo}/${MAX_AMMO}`, {
@@ -111,9 +134,18 @@ function create() {
     fill: "#ffffff"
   }).setDepth(1);
 
+  healthText = this.add.text(10, 35, `HP: ${health}`, {
+    fontSize: "18px",
+    fill: "#ff6666"
+  }).setDepth(1);
+
+  pauseText = createPauseOverlay(this);
+  ({ gameOverText, restartHintText } = createGameOverOverlay(this));
+
   this.input.on("pointerdown", (pointer) => {
     const now = this.time.now;
 
+    if (isPaused || isGameOver) return;
     if (!canShoot(lastShotTime, now, SHOOT_COOLDOWN)) return;
     if (!canShootWithAmmo(ammo) || isReloading) return;
 
@@ -137,6 +169,23 @@ function create() {
 // =======================
 
 function update() {
+  // Przełączanie pauzy klawiszem P
+  if (Phaser.Input.Keyboard.JustDown(keys.P)) {
+    isPaused = togglePause(isPaused);
+    pauseText.setVisible(isPaused);
+  }
+
+  // Restart po game over klawiszem ENTER
+  if (isGameOver) {
+    if (Phaser.Input.Keyboard.JustDown(keys.ENTER)) {
+      this.scene.restart();
+    }
+    return;
+  }
+
+  // Blokada logiki podczas pauzy
+  if (isPaused) return;
+
   handlePlayerMovement();
   handlePlayerRotation(this);        // przekazujemy this (scenę)
   updateBullets(this);               // przekazujemy this
@@ -201,10 +250,14 @@ function checkPlayerEnemyCollisions(scene) {
       enemy.lastHitTime = now;
 
       health = takeDamage(health, enemy.damage);
+      healthText.setText(`HP: ${health}`);
       console.log(`Trafienie! Zdrowie: ${health}`);
 
       if (!isAlive(health)) {
-        console.log("GAME OVER");
+        isGameOver = true;
+        gameOverText.setText(`GAME OVER\nPunkty: ${score}`);
+        gameOverText.setVisible(true);
+        restartHintText.setVisible(true);
       }
     }
   }
