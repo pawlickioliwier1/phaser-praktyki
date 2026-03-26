@@ -8,6 +8,7 @@ import { getRandomSpawn } from "./spawn";
 import { increaseScore } from "./score";
 import { takeDamage, isAlive } from "./playerHealth";
 import { getEnemyStats, chooseEnemyType } from "./enemyTypes";
+import { getEnemiesCountForWave } from "./waves";
 import { MAX_AMMO, RELOAD_TIME, canShootWithAmmo, useAmmo, finishReload } from "./reload";
 import { createPauseOverlay, createGameOverOverlay, togglePause } from "./pause";
 
@@ -58,7 +59,7 @@ new Phaser.Game(config);
 // =======================
 
 function spawnWave(scene) {
-  const enemyCount = currentWave * 2;
+  const enemyCount = getEnemiesCountForWave(currentWave);
 
   for (let i = 0; i < enemyCount; i++) {
     const spawnPos = getRandomSpawn(800, 600);
