@@ -8,6 +8,7 @@ import { getRandomSpawn } from "./spawn";
 import { increaseScore } from "./score";
 import { takeDamage, isAlive } from "./playerHealth";
 import { getEnemyStats, chooseEnemyType } from "./enemyTypes";
+import { MAX_AMMO, RELOAD_TIME, canShootWithAmmo, useAmmo, finishReload } from "./reload";
 
 // =======================
 // Zmienne globalne
@@ -24,6 +25,11 @@ let lastShotTime = 0;
 let score = 0;
 let health = 3;
 let currentWave = 1;
+
+let ammo = MAX_AMMO;
+let isReloading = false;
+let reloadStartTime = 0;
+let ammoText;
 
 // =======================
 // Konfiguracja gry
@@ -96,15 +102,23 @@ function create() {
     W: Phaser.Input.Keyboard.KeyCodes.W,
     A: Phaser.Input.Keyboard.KeyCodes.A,
     S: Phaser.Input.Keyboard.KeyCodes.S,
-    D: Phaser.Input.Keyboard.KeyCodes.D
+    D: Phaser.Input.Keyboard.KeyCodes.D,
+    R: Phaser.Input.Keyboard.KeyCodes.R
   });
+
+  ammoText = this.add.text(10, 10, `Ammo: ${ammo}/${MAX_AMMO}`, {
+    fontSize: "18px",
+    fill: "#ffffff"
+  }).setDepth(1);
 
   this.input.on("pointerdown", (pointer) => {
     const now = this.time.now;
 
     if (!canShoot(lastShotTime, now, SHOOT_COOLDOWN)) return;
+    if (!canShootWithAmmo(ammo) || isReloading) return;
 
     lastShotTime = now;
+    ammo = useAmmo(ammo);
 
     const velocity = getBulletVelocity(
       player.x, player.y, pointer.worldX, pointer.worldY, 10
@@ -128,6 +142,7 @@ function update() {
   updateBullets(this);               // przekazujemy this
   checkPlayerEnemyCollisions(this);  // przekazujemy this
   checkWaveProgress(this);
+  handleReload(this);
 }
 
 // =======================
@@ -200,5 +215,29 @@ function checkWaveProgress(scene) {
     currentWave++;
     console.log("Fala", currentWave);
     spawnWave(scene);
+  }
+}
+
+function handleReload(scene) {
+  // Rozpocznij przeładowanie po wciśnięciu R
+  if (Phaser.Input.Keyboard.JustDown(keys.R) && !isReloading && ammo < MAX_AMMO) {
+    isReloading = true;
+    reloadStartTime = scene.time.now;
+    console.log("Przeładowuję...");
+  }
+
+  // Zakończ przeładowanie po upływie RELOAD_TIME
+  if (isReloading && scene.time.now - reloadStartTime >= RELOAD_TIME) {
+    const result = finishReload(MAX_AMMO);
+    ammo = result.ammo;
+    isReloading = result.isReloading;
+    console.log("Przeładowano! Ammo:", ammo);
+  }
+
+  // Aktualizuj tekst UI
+  if (isReloading) {
+    ammoText.setText("Reloading...");
+  } else {
+    ammoText.setText(`Ammo: ${ammo}/${MAX_AMMO}`);
   }
 }
